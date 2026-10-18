@@ -2,6 +2,7 @@ package com.avaruk.kettlebellcounter
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
@@ -19,6 +20,8 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * A thin shell around the scoreboard web pages. Two screens:
@@ -33,6 +36,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()   // no title bar with the app name
+        // Content may extend into the display cutout, so the hidden status bar leaves no black strip
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Back goes through the page history; on the first page it opens a small menu (reload / change address / exit)
@@ -45,6 +51,19 @@ class MainActivity : AppCompatActivity() {
 
         val saved = prefs.getString(KEY_SERVER, null)
         if (saved != null) openWeb(saved) else showSetup(null)
+    }
+
+    // Hide the status bar; a swipe from the top edge shows it briefly. Repeated on focus, since the system brings it back
+    private fun hideStatusBar() {
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.statusBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideStatusBar()
     }
 
     // ---------- Setup screen ----------
