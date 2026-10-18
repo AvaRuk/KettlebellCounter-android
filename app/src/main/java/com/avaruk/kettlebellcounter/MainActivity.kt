@@ -6,8 +6,6 @@ import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
 import android.view.KeyEvent
-import android.view.Menu
-import android.view.MenuItem
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.webkit.WebResourceError
@@ -19,6 +17,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 
 /**
@@ -33,13 +32,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportActionBar?.hide()   // no title bar with the app name
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        // Back goes through the page history, then closes the app
+        // Back goes through the page history; on the first page it opens a small menu (reload / change address / exit)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val w = web
-                if (w != null && w.canGoBack()) w.goBack() else finish()
+                if (w != null && w.canGoBack()) w.goBack() else if (w != null) showMenu() else finish()
             }
         })
 
@@ -51,7 +51,6 @@ class MainActivity : AppCompatActivity() {
     private fun showSetup(error: String?) {
         web?.destroy()
         web = null
-        invalidateOptionsMenu()
 
         val pad = (24 * resources.displayMetrics.density).toInt()
         val title = TextView(this).apply {
@@ -114,7 +113,6 @@ class MainActivity : AppCompatActivity() {
         }
         web = w
         setContentView(w)
-        invalidateOptionsMenu()
     }
 
     // Volume buttons go to the page instead of changing the system volume
@@ -130,23 +128,18 @@ class MainActivity : AppCompatActivity() {
         return super.dispatchKeyEvent(e)
     }
 
-    // ---------- Menu ----------
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, MENU_RELOAD, 0, "Обновить").setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
-        menu.add(0, MENU_ADDRESS, 1, "Сменить адрес сервера").setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
-        return true
-    }
-
-    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        menu.findItem(MENU_RELOAD)?.isVisible = web != null
-        menu.findItem(MENU_ADDRESS)?.isVisible = web != null
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
-        MENU_RELOAD -> { web?.reload(); true }
-        MENU_ADDRESS -> { showSetup(null); true }
-        else -> super.onOptionsItemSelected(item)
+    // ---------- Menu (Back on the first page) ----------
+    private fun showMenu() {
+        AlertDialog.Builder(this)
+            .setItems(arrayOf("Обновить", "Сменить адрес сервера", "Выйти")) { _, which ->
+                when (which) {
+                    0 -> web?.reload()
+                    1 -> showSetup(null)
+                    else -> finish()
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     override fun onDestroy() {
@@ -165,7 +158,5 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val KEY_SERVER = "server"
-        private const val MENU_RELOAD = 1
-        private const val MENU_ADDRESS = 2
     }
 }
